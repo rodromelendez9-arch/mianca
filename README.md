@@ -31,13 +31,29 @@ Quien vende maquinaria/equipo usado (excavadoras, compresores, generadores, herr
 - **Fuentes de comparables**: scraping de ML/FB tiene fricción legal/técnica (ToS, rate limits, anti-bot). Vale la pena evaluar si existen datasets/APIs de terceros para precios de maquinaria usada antes de construir un scraper propio.
 - **Visión por IA**: extraer marca/modelo/horas de fotos es factible con modelos multimodales actuales, pero conviene validar precisión con equipo real del nicho antes de prometer autodetección perfecta.
 
-## Estado
+## Alcance del MVP (decidido)
 
-Idea en etapa de concepto — carpeta creada para arrancar el desarrollo. Próximo paso: acotar el MVP (ver preguntas abiertas abajo).
+- **Vertical**: nicho amplio de equipo/maquinaria usada (no solo construcción) — no nos limitamos a lo que ya cubre Constructa.
+- **Usuario objetivo**: dealers / flotillas que venden equipo seguido, no el vendedor particular ocasional. Esto implica que el MVP necesita, desde el inicio:
+  - Un dashboard que maneje **varios anuncios a la vez** (no solo un flujo de un solo equipo).
+  - Carga por lote (subir fotos/video de varios equipos en una sesión).
+  - Historial de valuaciones y anuncios generados por cuenta.
+- **Canal de publicación real (v1)**: **Mercado Libre**, vía su API pública de publicación (OAuth + `POST /items`). Es la única integración que puede automatizarse de punta a punta en el MVP.
+- **Facebook Marketplace**: fase 2. Como no hay API pública de creación de listings para terceros, el output ahí es un anuncio "listo para copiar/pegar" (título, descripción, fotos ordenadas) — no publicación automática — hasta que se evalúe una vía viable (extensión de navegador, etc.).
 
-## Preguntas abiertas para el MVP
+## Flujo del MVP
 
-- ¿Vertical inicial? (mismo nicho que Constructa — equipo de construcción — o más amplio)
-- ¿Primer canal de publicación a integrar de verdad? (Mercado Libre vía API es lo más realista para un MVP; Facebook Marketplace probablemente empieza como "anuncio listo para copiar/pegar")
-- ¿Modelo de negocio? (fee fijo por valuación/anuncio, suscripción, % si se vende, freemium)
-- ¿Quién es el usuario objetivo? (vendedor particular ocasional vs. dealer/flotilla que vende equipo seguido — este segundo tiene mucho más LTV y volumen)
+1. Dealer se registra / conecta su cuenta de Mercado Libre (OAuth).
+2. Sube fotos/video de uno o varios equipos (carga por lote).
+3. Por cada equipo: IA extrae marca, modelo, año aprox., horas/uso visible, estado, accesorios.
+4. Se buscan comparables activos en Mercado Libre (API pública de búsqueda) para ese modelo/categoría.
+5. Se calcula un rango de precio sugerido con justificación.
+6. Se genera título + descripción optimizados para el algoritmo de ML.
+7. Dealer revisa/edita y publica directo a Mercado Libre desde el dashboard (1 click por equipo, o publicación masiva).
+8. Para equipos que también quiera poner en Facebook Marketplace: se le entrega el anuncio ya armado, listo para pegar.
+
+## Pendiente por definir
+
+- Modelo de negocio (fee por valuación/anuncio, suscripción mensual por dealer, % si se vende, freemium con límite de anuncios/mes).
+- Fuente de datos para comparables "vendidos" (ML no siempre expone histórico de vendidos vía API pública — puede requerir estimarlo solo con activos + ajuste, al menos en v1).
+- Qué modelo multimodal usar para la extracción de specs desde fotos/video, y validar precisión con equipo real antes de prometer autodetección.
