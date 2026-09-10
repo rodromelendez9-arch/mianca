@@ -35,6 +35,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# certificados TLS locales (dev:https)
+/certificates
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

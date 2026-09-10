@@ -77,8 +77,11 @@ Los equipos que se ven en el dashboard siguen siendo datos de ejemplo (`lib/mock
 
 1. `npm install`
 2. Crea un proyecto en [Supabase](https://supabase.com), corre el SQL de [supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql) en el SQL Editor.
-3. Crea una app en [Mercado Libre Developers](https://developers.mercadolibre.com.mx/) con `redirect_uri = http://localhost:3000/api/ml/callback` (o tu dominio en producción).
-4. Copia `.env.local.example` a `.env.local` y llena las variables reales (Supabase + Mercado Libre; `ANTHROPIC_API_KEY` se usará en el siguiente paso, para la valuación con IA).
-5. `npm run dev` y entra a `/registro` para crear tu primer dealer.
+3. Crea una app en [Mercado Libre Developers](https://developers.mercadolibre.com.mx/). **ML exige que el Redirect URI sea `https://`, no acepta `http://localhost`** — usa `https://localhost:3000/api/ml/callback` (o tu dominio real en producción).
+4. Copia `.env.local.example` a `.env.local` y llena las variables reales: URL/anon key/service role key de Supabase (Project Settings → API en el dashboard de Supabase) y el client id/secret de tu app de ML.
+5. Para correr https en local sin depender de mkcert (que pide permisos de administrador), ya hay un certificado autofirmado generado en `certificates/` — corre `npm run dev:https` en vez de `npm run dev`.
+6. Abre `https://localhost:3000` **en tu navegador real** (no en uno headless) y acepta la advertencia de certificado autofirmado la primera vez ("Avanzado" → "Continuar a localhost"). Entra a `/registro` para crear tu primer dealer, y desde `/dashboard` prueba el botón "Conectar" de Mercado Libre — ese paso de login en ML tienes que completarlo tú, con tu cuenta real.
 
-> Ahora mismo el repo trae un `.env.local` con valores de relleno (no funcionales) solo para que `npm run dev` no truene al no encontrar variables de entorno — reemplázalo con credenciales reales para probar el flujo de principio a fin.
+> Si el certificado en `certificates/` expira o lo borras, regenéralo con:
+> `openssl req -x509 -newkey rsa:2048 -keyout certificates/localhost-key.pem -out certificates/localhost.pem -days 365 -nodes -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"`
+> (en Git Bash antepón `MSYS_NO_PATHCONV=1` al comando para que no reescriba la ruta `/CN=localhost`).
