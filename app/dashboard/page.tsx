@@ -1,5 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import { MlConnectCard } from "@/components/ml-connect-card";
 import { equiposMock, type EquipmentStatus } from "@/lib/mock-data";
+import { useSession } from "@/lib/use-session";
 
 const estiloEstado: Record<EquipmentStatus, string> = {
   borrador: "bg-[var(--border)] text-[var(--muted)]",
@@ -22,17 +25,13 @@ function formatoMoneda(valor: number) {
 }
 
 export default function DashboardPage() {
+  const { session } = useSession();
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="flex items-center justify-between">
         <div>
-          <Link
-            href="/"
-            className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
-          >
-            ← Mianca
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold">Tu flota</h1>
+          <h1 className="text-2xl font-bold">Tu flota</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             {equiposMock.length} equipos · datos de ejemplo
           </p>
@@ -44,6 +43,12 @@ export default function DashboardPage() {
           + Subir equipo
         </button>
       </div>
+
+      {session && (
+        <div className="mt-6">
+          <MlConnectCard dealerId={session.user.id} />
+        </div>
+      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {equiposMock.map((equipo) => (

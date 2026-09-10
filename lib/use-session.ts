@@ -1,0 +1,26 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+
+/** Sesión actual del dealer. `loading` distingue "aún no sabemos" de "no hay sesión". */
+export function useSession() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  return { session, loading };
+}

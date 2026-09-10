@@ -57,3 +57,28 @@ Quien vende maquinaria/equipo usado (excavadoras, compresores, generadores, herr
 - Modelo de negocio (fee por valuación/anuncio, suscripción mensual por dealer, % si se vende, freemium con límite de anuncios/mes).
 - Fuente de datos para comparables "vendidos" (ML no siempre expone histórico de vendidos vía API pública — puede requerir estimarlo solo con activos + ajuste, al menos en v1).
 - Qué modelo multimodal usar para la extracción de specs desde fotos/video, y validar precisión con equipo real antes de prometer autodetección.
+
+## Estado del desarrollo
+
+Construyendo en el orden natural: **auth → carga/valuación con IA → comparables → generación y publicación de anuncio**.
+
+- [x] Landing page + dashboard skeleton (datos de ejemplo).
+- [x] Auth de dealers (registro/login con Supabase Auth) — [app/(auth)/login](app/(auth)/login/page.tsx), [app/(auth)/registro](app/(auth)/registro/page.tsx), guard de sesión en [app/dashboard/layout.tsx](app/dashboard/layout.tsx).
+- [x] Conexión OAuth con Mercado Libre por dealer — botón "Conectar" en el dashboard ([components/ml-connect-card.tsx](components/ml-connect-card.tsx)), callback que canjea el `code` y guarda tokens ([app/api/ml/callback/route.ts](app/api/ml/callback/route.ts)), helpers en [lib/mercadolibre.ts](lib/mercadolibre.ts).
+- [x] Schema de base de datos: `dealers`, `equipos`, `ml_conexiones` ([supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql)), con RLS para que cada dealer solo vea lo suyo.
+- [ ] Carga de fotos/video + extracción de specs con IA (siguiente paso).
+- [ ] Búsqueda de comparables reales en Mercado Libre y cálculo del rango de precio.
+- [ ] Generación del anuncio (título/descripción) y publicación vía `POST /items` de ML.
+- [ ] Salida "copiar/pegar" para Facebook Marketplace (fase 2).
+
+Los equipos que se ven en el dashboard siguen siendo datos de ejemplo (`lib/mock-data.ts`) — todavía no hay carga real, eso es el siguiente paso.
+
+## Cómo correrlo localmente
+
+1. `npm install`
+2. Crea un proyecto en [Supabase](https://supabase.com), corre el SQL de [supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql) en el SQL Editor.
+3. Crea una app en [Mercado Libre Developers](https://developers.mercadolibre.com.mx/) con `redirect_uri = http://localhost:3000/api/ml/callback` (o tu dominio en producción).
+4. Copia `.env.local.example` a `.env.local` y llena las variables reales (Supabase + Mercado Libre; `ANTHROPIC_API_KEY` se usará en el siguiente paso, para la valuación con IA).
+5. `npm run dev` y entra a `/registro` para crear tu primer dealer.
+
+> Ahora mismo el repo trae un `.env.local` con valores de relleno (no funcionales) solo para que `npm run dev` no truene al no encontrar variables de entorno — reemplázalo con credenciales reales para probar el flujo de principio a fin.
