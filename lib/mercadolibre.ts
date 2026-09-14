@@ -13,18 +13,53 @@ export function getMlRedirectUri() {
   return "";
 }
 
-/** Construye la URL a la que se manda al dealer para autorizar Mianca en su cuenta de ML.
- *  `state` debe identificar al dealer (usamos su user id de Supabase) para poder
- *  asociar los tokens al volver del callback. */
-export function buildMlAuthorizeUrl(state: string) {
+function base64url(bytes: Uint8Array): string {
+  let binario = "";
+  for (const b of bytes) binario += String.fromCharCode(b);
+  return btoa(binario).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64urlDeTexto(texto: string): string {
+  return base64url(new TextEncoder().encode(texto));
+}
+
+function textoDeBase64url(valor: string): string {
+  const base64 = valor.replace(/-/g, "+").replace(/_/g, "/");
+  return atob(base64);
+}
+
+/** La app de ML quedó configurada con PKCE obligatorio (Authorization Code + PKCE),
+ *  así que armamos code_verifier/code_challenge nosotros. El code_verifier viaja
+ *  metido en `state` (junto con el dealer_id) porque el callback es un request
+ *  server-side distinto al que inició el flujo — no hay sesión/cookie que compartir. */
+export async function buildMlAuthorizeUrl(dealerId: string): Promise<string> {
+  const codeVerifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(codeVerifier)
+  );
+  const codeChallenge = base64url(new Uint8Array(hash));
+
+  const state = base64urlDeTexto(JSON.stringify({ dealerId, codeVerifier }));
+
   const clientId = process.env.NEXT_PUBLIC_ML_CLIENT_ID;
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId ?? "",
     redirect_uri: getMlRedirectUri(),
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
   return `${ML_AUTH_URL}?${params.toString()}`;
+}
+
+/** Decodifica el `state` que arma buildMlAuthorizeUrl. */
+export function parseMlState(state: string): {
+  dealerId: string;
+  codeVerifier: string;
+} {
+  return JSON.parse(textoDeBase64url(state));
 }
 
 interface MlTokenResponse {
@@ -38,7 +73,8 @@ interface MlTokenResponse {
 /** Intercambia el `code` del callback por tokens de acceso. Solo server-side. */
 export async function exchangeMlCode(
   code: string,
-  redirectUri: string
+  redirectUri: string,
+  codeVerifier: string
 ): Promise<MlTokenResponse> {
   const res = await fetch(ML_TOKEN_URL, {
     method: "POST",
@@ -52,6 +88,7 @@ export async function exchangeMlCode(
       client_secret: process.env.ML_CLIENT_SECRET ?? "",
       code,
       redirect_uri: redirectUri,
+      code_verifier: codeVerifier,
     }),
   });
 

@@ -9,8 +9,8 @@ export function MlConnectCard({ dealerId }: { dealerId: string }) {
   const params = useSearchParams();
   const resultado = params.get("ml");
 
-  function conectar() {
-    window.location.href = buildMlAuthorizeUrl(dealerId);
+  async function conectar() {
+    window.location.href = await buildMlAuthorizeUrl(dealerId);
   }
 
   return (

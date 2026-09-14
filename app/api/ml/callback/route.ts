@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeMlCode, getMlRedirectUri } from "@/lib/mercadolibre";
+import { exchangeMlCode, getMlRedirectUri, parseMlState } from "@/lib/mercadolibre";
 import { createServerClient } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
-  const dealerId = searchParams.get("state");
+  const state = searchParams.get("state");
   const mlError = searchParams.get("error");
 
   if (mlError) {
     return NextResponse.redirect(`${origin}/dashboard?ml=rechazado`);
   }
 
-  if (!code || !dealerId) {
+  if (!code || !state) {
     return NextResponse.redirect(`${origin}/dashboard?ml=error`);
   }
 
   try {
+    const { dealerId, codeVerifier } = parseMlState(state);
+
     const redirectUri =
       process.env.NEXT_PUBLIC_ML_REDIRECT_URI ??
       getMlRedirectUri() ??
       `${origin}/api/ml/callback`;
 
-    const tokens = await exchangeMlCode(code, redirectUri);
+    const tokens = await exchangeMlCode(code, redirectUri, codeVerifier);
 
     const supabaseAdmin = createServerClient();
     const { error } = await supabaseAdmin.from("ml_conexiones").upsert({
