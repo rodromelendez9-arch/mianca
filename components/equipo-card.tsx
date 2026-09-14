@@ -47,6 +47,9 @@ export function EquipoCard({
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [mostrarComparables, setMostrarComparables] = useState(false);
+
+  const identificacionIncierta = !equipo.marca || !equipo.modelo;
 
   async function generarAnuncio() {
     setCargando("anuncio");
@@ -105,17 +108,58 @@ export function EquipoCard({
 
       <h2 className="mt-3 font-semibold">{equipo.nombre}</h2>
       <p className="text-sm text-[var(--muted)]">{detalles(equipo)}</p>
+      {equipo.estado_visible && (
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          {equipo.estado_visible}
+        </p>
+      )}
+
+      {identificacionIncierta && (
+        <p className="mt-2 text-xs text-amber-400">
+          ⚠ La IA no identificó {!equipo.marca && !equipo.modelo ? "marca ni modelo" : !equipo.marca ? "la marca" : "el modelo"} con certeza — revisa los comparables antes de confiar en el precio.
+        </p>
+      )}
 
       <div className="mt-4 border-t border-[var(--border)] pt-4">
         {equipo.precio_sugerido_min && equipo.precio_sugerido_max ? (
           <>
-            <p className="text-xs text-[var(--muted)]">
-              Precio sugerido · {equipo.comparables.length} comparables
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--muted)]">
+                Precio sugerido · {equipo.comparables.length} comparables
+              </p>
+              {equipo.comparables.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMostrarComparables((v) => !v)}
+                  className="text-xs text-[var(--accent)] underline"
+                >
+                  {mostrarComparables ? "Ocultar" : "Ver comparables"}
+                </button>
+              )}
+            </div>
             <p className="mt-1 font-semibold">
               {formatoMoneda(equipo.precio_sugerido_min)} –{" "}
               {formatoMoneda(equipo.precio_sugerido_max)}
             </p>
+            {mostrarComparables && (
+              <ul className="mt-3 space-y-2 border-t border-[var(--border)] pt-3">
+                {equipo.comparables.map((c) => (
+                  <li key={c.id} className="text-xs">
+                    <a
+                      href={c.permalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[var(--foreground)] underline decoration-[var(--border)] hover:decoration-[var(--accent)]"
+                    >
+                      {c.title}
+                    </a>
+                    <span className="ml-2 text-[var(--muted)]">
+                      {formatoMoneda(c.price)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         ) : (
           <p className="text-sm text-[var(--muted)]">

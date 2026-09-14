@@ -5,6 +5,13 @@ import { supabase } from "@/lib/supabase";
 
 export type EstadoEquipo = "borrador" | "valuado" | "publicado";
 
+export interface ComparableGuardado {
+  id: string;
+  title: string;
+  price: number;
+  permalink: string;
+}
+
 export interface Equipo {
   id: string;
   dealer_id: string;
@@ -13,11 +20,12 @@ export interface Equipo {
   modelo: string | null;
   anio: number | null;
   horas: number | null;
+  estado_visible: string | null;
   estado: EstadoEquipo;
   fotos: string[];
   precio_sugerido_min: number | null;
   precio_sugerido_max: number | null;
-  comparables: unknown[];
+  comparables: ComparableGuardado[];
   titulo_anuncio: string | null;
   descripcion_anuncio: string | null;
   ml_item_id: string | null;
