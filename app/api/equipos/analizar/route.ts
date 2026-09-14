@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
         modelo: analisis.modelo,
         anio: analisis.anio,
         horas: analisis.horas,
+        estado_visible: analisis.estado_visible,
         fotos,
         estado: "borrador",
       })

@@ -116,3 +116,108 @@ export async function buscarComparablesMl(
     condition: string;
   }>;
 }
+
+/** Predice la categoría de ML más probable para un texto (título del anuncio). */
+export async function predecirCategoriaMl(
+  texto: string,
+  siteId = "MLM"
+): Promise<string | null> {
+  const params = new URLSearchParams({ q: texto, limit: "1" });
+  const res = await fetch(
+    `https://api.mercadolibre.com/sites/${siteId}/domain_discovery/search?${params.toString()}`
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as Array<{ category_id: string }>;
+  return data[0]?.category_id ?? null;
+}
+
+interface AtributoCategoria {
+  id: string;
+  tags?: { required?: boolean };
+}
+
+/** Arma los atributos obligatorios que sabemos llenar (marca/modelo/condición);
+ *  el resto de obligatorios que no podamos deducir los deja fuera — ML los
+ *  reportará como faltantes en la respuesta si aplica. */
+export async function construirAtributosMl(
+  categoryId: string,
+  datos: { marca?: string | null; modelo?: string | null }
+): Promise<Array<{ id: string; value_name: string }>> {
+  const res = await fetch(
+    `https://api.mercadolibre.com/categories/${categoryId}/attributes`
+  );
+  if (!res.ok) return [];
+  const atributos = (await res.json()) as AtributoCategoria[];
+
+  const valoresConocidos: Record<string, string | null | undefined> = {
+    BRAND: datos.marca,
+    MODEL: datos.modelo,
+    ITEM_CONDITION: "Usado",
+  };
+
+  return atributos
+    .filter((a) => a.tags?.required && valoresConocidos[a.id])
+    .map((a) => ({ id: a.id, value_name: valoresConocidos[a.id] as string }));
+}
+
+interface PublicarMlInput {
+  accessToken: string;
+  categoryId: string;
+  titulo: string;
+  precio: number;
+  fotos: string[];
+  atributos: Array<{ id: string; value_name: string }>;
+}
+
+/** Crea la publicación en Mercado Libre. Primer intento real de integración:
+ *  categorías con atributos obligatorios que no cubrimos arriba devolverán
+ *  400 listando justo lo que falta — es esperable iterar sobre esto. */
+export async function crearPublicacionMl(input: PublicarMlInput) {
+  const res = await fetch("https://api.mercadolibre.com/items", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    body: JSON.stringify({
+      title: input.titulo.slice(0, 60),
+      category_id: input.categoryId,
+      price: input.precio,
+      currency_id: "MXN",
+      available_quantity: 1,
+      buying_mode: "buy_it_now",
+      condition: "used",
+      listing_type_id: "gold_special",
+      pictures: input.fotos.map((url) => ({ source: url })),
+      attributes: input.atributos,
+    }),
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Mercado Libre rechazó la publicación: ${JSON.stringify(body)}`);
+  }
+  return body as { id: string; permalink: string };
+}
+
+export async function agregarDescripcionMl(
+  itemId: string,
+  accessToken: string,
+  descripcion: string
+) {
+  const res = await fetch(
+    `https://api.mercadolibre.com/items/${itemId}/description`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ plain_text: descripcion }),
+    }
+  );
+  if (!res.ok) {
+    const detalle = await res.text();
+    throw new Error(`No se pudo guardar la descripción: ${detalle}`);
+  }
+}
