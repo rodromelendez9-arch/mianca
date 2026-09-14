@@ -63,11 +63,44 @@ export async function exchangeMlCode(
   return res.json();
 }
 
-/** Busca publicaciones activas similares en Mercado Libre para usar como comparables. */
-export async function buscarComparablesMl(query: string, siteId = "MLM") {
+/** Refresca un access_token vencido usando el refresh_token guardado. */
+export async function refreshMlToken(
+  refreshToken: string
+): Promise<MlTokenResponse> {
+  const res = await fetch(ML_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: process.env.NEXT_PUBLIC_ML_CLIENT_ID ?? "",
+      client_secret: process.env.ML_CLIENT_SECRET ?? "",
+      refresh_token: refreshToken,
+    }),
+  });
+
+  if (!res.ok) {
+    const detalle = await res.text();
+    throw new Error(`No se pudo refrescar el token de Mercado Libre: ${detalle}`);
+  }
+
+  return res.json();
+}
+
+/** Busca publicaciones activas similares en Mercado Libre para usar como comparables.
+ *  ML exige un access_token de usuario real (no de app) incluso para buscar —
+ *  se usa el token del dealer que conectó su cuenta. */
+export async function buscarComparablesMl(
+  query: string,
+  accessToken: string,
+  siteId = "MLM"
+) {
   const params = new URLSearchParams({ q: query, limit: "20" });
   const res = await fetch(
-    `https://api.mercadolibre.com/sites/${siteId}/search?${params.toString()}`
+    `https://api.mercadolibre.com/sites/${siteId}/search?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
   if (!res.ok) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analizarFotosEquipo } from "@/lib/anthropic";
 import { buscarComparablesMl } from "@/lib/mercadolibre";
+import { getValidMlAccessToken } from "@/lib/ml-token";
 import { calcularRangoPrecio } from "@/lib/pricing";
 import { createUserClient } from "@/lib/supabase";
 
@@ -47,12 +48,22 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
-    // Buscar comparables es best-effort: si falla, el equipo se queda creado
-    // en borrador (con los specs de la IA) y se puede reintentar después.
+    // Buscar comparables es best-effort: si falla (o el dealer no ha
+    // conectado Mercado Libre todavía — ML exige token de usuario incluso
+    // para buscar), el equipo se queda creado en borrador con los specs de
+    // la IA, y se puede reintentar después.
     const query = [analisis.marca, analisis.modelo].filter(Boolean).join(" ");
     if (query) {
       try {
-        const listados = await buscarComparablesMl(query);
+        const mlToken = await getValidMlAccessToken(user.id);
+        if (!mlToken) {
+          console.log(
+            "Dealer sin conexión a Mercado Libre — se omite búsqueda de comparables"
+          );
+          return NextResponse.json({ equipo, analisis });
+        }
+
+        const listados = await buscarComparablesMl(query, mlToken);
         const rango = calcularRangoPrecio(listados);
 
         if (rango) {
