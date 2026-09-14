@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FbExportPanel } from "@/components/fb-export-panel";
 import type { Equipo, EstadoEquipo } from "@/lib/use-equipos";
 
 const estiloEstado: Record<EstadoEquipo, string> = {
@@ -34,7 +35,12 @@ function detalles(equipo: Equipo) {
     .join(" · ");
 }
 
-type Accion = "anuncio" | "publicar" | "guardando" | "recalculando" | null;
+type Accion = "anuncio" | "publicar" | "guardando" | "recalculando" | "metricas" | null;
+
+interface Metricas {
+  visitas: number | null;
+  preguntas: number | null;
+}
 
 interface FormEdicion {
   nombre: string;
@@ -68,6 +74,8 @@ export function EquipoCard({
   const [mostrarComparables, setMostrarComparables] = useState(false);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<FormEdicion>(() => formDesdeEquipo(equipo));
+  const [mostrarFb, setMostrarFb] = useState(false);
+  const [metricas, setMetricas] = useState<Metricas | null>(null);
 
   const identificacionIncierta = !equipo.marca || !equipo.modelo;
 
@@ -135,6 +143,23 @@ export function EquipoCard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error generando el anuncio");
       onCambio();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Algo salió mal");
+    } finally {
+      setCargando(null);
+    }
+  }
+
+  async function cargarMetricas() {
+    setCargando("metricas");
+    setError(null);
+    try {
+      const res = await fetch(`/api/equipos/${equipo.id}/metricas`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudieron cargar las métricas");
+      setMetricas(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Algo salió mal");
     } finally {
@@ -254,6 +279,14 @@ export function EquipoCard({
               {equipo.estado_visible}
             </p>
           )}
+          {equipo.video_url && (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video
+              src={equipo.video_url}
+              controls
+              className="mt-2 max-h-40 w-full rounded-lg"
+            />
+          )}
         </>
       )}
 
@@ -334,21 +367,59 @@ export function EquipoCard({
         )}
       </div>
 
-      {equipo.titulo_anuncio && (
-        <p className="mt-3 text-xs text-[var(--muted)] line-clamp-1">
-          &ldquo;{equipo.titulo_anuncio}&rdquo;
-        </p>
+      {equipo.titulo_anuncio && !editando && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-[var(--muted)] line-clamp-1">
+              &ldquo;{equipo.titulo_anuncio}&rdquo;
+            </p>
+            <button
+              type="button"
+              onClick={() => setMostrarFb((v) => !v)}
+              className="shrink-0 text-xs text-[var(--accent)] underline"
+            >
+              {mostrarFb ? "Ocultar" : "Ver para Facebook"}
+            </button>
+          </div>
+          {mostrarFb && <FbExportPanel equipo={equipo} />}
+        </div>
+      )}
+
+      {!editando && equipo.estado === "publicado" && equipo.ml_item_id && (
+        <div className="mt-3 border-t border-[var(--border)] pt-3">
+          {metricas ? (
+            <p className="text-xs text-[var(--muted)]">
+              {metricas.visitas ?? "?"} visitas (30 días) ·{" "}
+              {metricas.preguntas ?? "?"} preguntas
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={cargarMetricas}
+              disabled={cargando !== null}
+              className="text-xs text-[var(--muted)] underline hover:text-[var(--foreground)] disabled:opacity-50"
+            >
+              {cargando === "metricas" ? "Cargando…" : "Ver métricas de ML"}
+            </button>
+          )}
+          {equipo.ml_permalink && (
+            <a
+              href={equipo.ml_permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-3 text-xs text-[var(--accent)] underline"
+            >
+              Ver en Mercado Libre
+            </a>
+          )}
+        </div>
       )}
 
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
 
       {!editando && (
         <div className="mt-4 flex gap-2">
-          {equipo.estado === "publicado" ? (
-            <p className="text-xs text-[var(--muted)]">
-              Publicado en Mercado Libre
-            </p>
-          ) : equipo.titulo_anuncio ? (
+          {equipo.estado === "publicado" ? null : equipo.titulo_anuncio ? (
             <button
               type="button"
               onClick={publicar}

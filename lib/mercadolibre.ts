@@ -258,3 +258,43 @@ export async function agregarDescripcionMl(
     throw new Error(`No se pudo guardar la descripción: ${detalle}`);
   }
 }
+
+export interface MetricasMl {
+  visitas: number | null;
+  preguntas: number | null;
+}
+
+/** Métricas básicas de una publicación ya activa en ML: visitas (últimos 30
+ *  días) y preguntas totales. Primer intento con estos endpoints — no
+ *  verificado en vivo, puede necesitar ajuste de parámetros. */
+export async function obtenerMetricasMl(
+  itemId: string,
+  accessToken: string
+): Promise<MetricasMl> {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+
+  const [visitasRes, preguntasRes] = await Promise.all([
+    fetch(
+      `https://api.mercadolibre.com/items/${itemId}/visits/time_window?last=30&unit=day`,
+      { headers }
+    ),
+    fetch(
+      `https://api.mercadolibre.com/questions/search?item_id=${itemId}`,
+      { headers }
+    ),
+  ]);
+
+  let visitas: number | null = null;
+  if (visitasRes.ok) {
+    const data = await visitasRes.json();
+    visitas = typeof data.total_visits === "number" ? data.total_visits : null;
+  }
+
+  let preguntas: number | null = null;
+  if (preguntasRes.ok) {
+    const data = await preguntasRes.json();
+    preguntas = typeof data.total === "number" ? data.total : null;
+  }
+
+  return { visitas, preguntas };
+}

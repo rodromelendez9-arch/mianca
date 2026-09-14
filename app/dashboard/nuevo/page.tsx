@@ -11,12 +11,13 @@ type EstadoGrupo = "pendiente" | "subiendo" | "analizando" | "listo" | "error";
 interface Grupo {
   id: string;
   archivos: File[];
+  video: File | null;
   estado: EstadoGrupo;
   error?: string;
 }
 
 function grupoVacio(): Grupo {
-  return { id: crypto.randomUUID(), archivos: [], estado: "pendiente" };
+  return { id: crypto.randomUUID(), archivos: [], video: null, estado: "pendiente" };
 }
 
 const ETIQUETA_ESTADO: Record<EstadoGrupo, string> = {
@@ -39,6 +40,10 @@ export default function NuevoEquipoPage() {
 
   function seleccionarArchivos(id: string, files: FileList | null) {
     actualizarGrupo(id, { archivos: Array.from(files ?? []), estado: "pendiente", error: undefined });
+  }
+
+  function seleccionarVideo(id: string, files: FileList | null) {
+    actualizarGrupo(id, { video: files?.[0] ?? null });
   }
 
   function agregarGrupo() {
@@ -66,6 +71,20 @@ export default function NuevoEquipoPage() {
         fotoUrls.push(publicUrl);
       }
 
+      let videoUrl: string | null = null;
+      if (grupo.video) {
+        const ruta = `${session.user.id}/${crypto.randomUUID()}-${grupo.video.name}`;
+        const { error: subidaError } = await supabase.storage
+          .from("equipos")
+          .upload(ruta, grupo.video);
+        if (subidaError) throw subidaError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("equipos").getPublicUrl(ruta);
+        videoUrl = publicUrl;
+      }
+
       actualizarGrupo(grupo.id, { estado: "analizando" });
       const res = await fetch("/api/equipos/analizar", {
         method: "POST",
@@ -73,7 +92,7 @@ export default function NuevoEquipoPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ fotos: fotoUrls }),
+        body: JSON.stringify({ fotos: fotoUrls, video: videoUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error analizando el equipo");
@@ -184,6 +203,38 @@ export default function NuevoEquipoPage() {
                 ))}
               </div>
             )}
+
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                id={`video-${grupo.id}`}
+                type="file"
+                accept="video/*"
+                disabled={procesando}
+                onChange={(e) => seleccionarVideo(grupo.id, e.target.files)}
+                className="hidden"
+              />
+              <label
+                htmlFor={`video-${grupo.id}`}
+                className="cursor-pointer text-xs text-[var(--muted)] underline hover:text-[var(--foreground)]"
+              >
+                {grupo.video
+                  ? `Video: ${grupo.video.name}`
+                  : "+ Agregar video (opcional)"}
+              </label>
+              {grupo.video && !procesando && (
+                <button
+                  type="button"
+                  onClick={() => actualizarGrupo(grupo.id, { video: null })}
+                  className="text-xs text-[var(--muted)] underline hover:text-[var(--foreground)]"
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              El video se guarda como evidencia extra del estado del equipo —
+              la IA solo analiza las fotos.
+            </p>
 
             {grupo.error && (
               <p className="mt-2 text-xs text-red-400">{grupo.error}</p>

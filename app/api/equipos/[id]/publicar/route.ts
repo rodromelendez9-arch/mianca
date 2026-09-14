@@ -94,7 +94,11 @@ export async function POST(
 
     const { data: equipoActualizado, error } = await supabase
       .from("equipos")
-      .update({ ml_item_id: item.id, estado: "publicado" })
+      .update({
+        ml_item_id: item.id,
+        ml_permalink: item.permalink,
+        estado: "publicado",
+      })
       .eq("id", id)
       .select()
       .single();

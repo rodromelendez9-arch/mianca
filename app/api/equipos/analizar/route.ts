@@ -18,7 +18,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const { fotos } = (await req.json()) as { fotos?: string[] };
+  const { fotos, video } = (await req.json()) as {
+    fotos?: string[];
+    video?: string | null;
+  };
   if (!fotos || fotos.length === 0) {
     return NextResponse.json(
       { error: "Sube al menos una foto" },
@@ -27,6 +30,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // El video (si lo hay) solo se guarda como evidencia adicional para el
+    // comprador — Claude no analiza video, solo las fotos.
     const analisis = await analizarFotosEquipo(fotos);
 
     const { data: equipo, error } = await supabase
@@ -40,6 +45,7 @@ export async function POST(req: NextRequest) {
         horas: analisis.horas,
         estado_visible: analisis.estado_visible,
         fotos,
+        video_url: video ?? null,
         estado: "borrador",
       })
       .select()

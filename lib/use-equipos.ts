@@ -23,6 +23,7 @@ export interface Equipo {
   estado_visible: string | null;
   estado: EstadoEquipo;
   fotos: string[];
+  video_url: string | null;
   precio_sugerido_min: number | null;
   precio_sugerido_max: number | null;
   precio_justificacion: string | null;
@@ -30,6 +31,7 @@ export interface Equipo {
   titulo_anuncio: string | null;
   descripcion_anuncio: string | null;
   ml_item_id: string | null;
+  ml_permalink: string | null;
   created_at: string;
 }
 
