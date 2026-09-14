@@ -66,12 +66,14 @@ Construyendo en el orden natural: **auth → carga/valuación con IA → compara
 - [x] Auth de dealers (registro/login con Supabase Auth) — [app/(auth)/login](app/(auth)/login/page.tsx), [app/(auth)/registro](app/(auth)/registro/page.tsx), guard de sesión en [app/dashboard/layout.tsx](app/dashboard/layout.tsx).
 - [x] Conexión OAuth con Mercado Libre por dealer — botón "Conectar" en el dashboard ([components/ml-connect-card.tsx](components/ml-connect-card.tsx)), callback que canjea el `code` y guarda tokens ([app/api/ml/callback/route.ts](app/api/ml/callback/route.ts)), helpers en [lib/mercadolibre.ts](lib/mercadolibre.ts).
 - [x] Schema de base de datos: `dealers`, `equipos`, `ml_conexiones` ([supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql)), con RLS para que cada dealer solo vea lo suyo.
-- [ ] Carga de fotos/video + extracción de specs con IA (siguiente paso).
-- [ ] Búsqueda de comparables reales en Mercado Libre y cálculo del rango de precio.
+- [x] Carga de fotos + extracción de specs con IA — [app/dashboard/nuevo](app/dashboard/nuevo/page.tsx) sube a Supabase Storage (bucket `equipos`, [supabase/migrations/002_storage.sql](supabase/migrations/002_storage.sql)) y llama a [app/api/equipos/analizar](app/api/equipos/analizar/route.ts), que usa Claude (`claude-opus-5`, [lib/anthropic.ts](lib/anthropic.ts)) para sacar marca/modelo/año/horas y crea el registro en `equipos`. El dashboard ya lee equipos reales de Supabase ([lib/use-equipos.ts](lib/use-equipos.ts)) — se quitó `lib/mock-data.ts`.
+- [ ] Búsqueda de comparables reales en Mercado Libre y cálculo del rango de precio (siguiente paso).
 - [ ] Generación del anuncio (título/descripción) y publicación vía `POST /items` de ML.
 - [ ] Salida "copiar/pegar" para Facebook Marketplace (fase 2).
 
-Los equipos que se ven en el dashboard siguen siendo datos de ejemplo (`lib/mock-data.ts`) — todavía no hay carga real, eso es el siguiente paso.
+## Producción
+
+Desplegado en Vercel: **https://mianca.vercel.app** (proyecto `melenci/mianca`). Las variables de entorno se manejan en el dashboard de Vercel (Project Settings → Environment Variables), no en este repo. Después de cambiar variables hay que redesplegar: `npx vercel --prod`.
 
 ## Cómo correrlo localmente
 
