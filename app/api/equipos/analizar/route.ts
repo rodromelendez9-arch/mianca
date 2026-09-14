@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analizarFotosEquipo } from "@/lib/anthropic";
+import { buscarComparablesMl } from "@/lib/mercadolibre";
+import { calcularRangoPrecio } from "@/lib/pricing";
 import { createUserClient } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
@@ -44,6 +46,36 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Buscar comparables es best-effort: si falla, el equipo se queda creado
+    // en borrador (con los specs de la IA) y se puede reintentar después.
+    const query = [analisis.marca, analisis.modelo].filter(Boolean).join(" ");
+    if (query) {
+      try {
+        const listados = await buscarComparablesMl(query);
+        const rango = calcularRangoPrecio(listados);
+
+        if (rango) {
+          const { data: equipoActualizado } = await supabase
+            .from("equipos")
+            .update({
+              precio_sugerido_min: rango.min,
+              precio_sugerido_max: rango.max,
+              comparables: rango.comparables,
+              estado: "valuado",
+            })
+            .eq("id", equipo.id)
+            .select()
+            .single();
+
+          if (equipoActualizado) {
+            return NextResponse.json({ equipo: equipoActualizado, analisis });
+          }
+        }
+      } catch (comparablesError) {
+        console.error("No se pudieron buscar comparables:", comparablesError);
+      }
+    }
 
     return NextResponse.json({ equipo, analisis });
   } catch (err) {
