@@ -67,8 +67,8 @@ Construyendo en el orden natural: **auth → carga/valuación con IA → compara
 - [x] Conexión OAuth con Mercado Libre por dealer — botón "Conectar" en el dashboard ([components/ml-connect-card.tsx](components/ml-connect-card.tsx)), callback que canjea el `code` y guarda tokens ([app/api/ml/callback/route.ts](app/api/ml/callback/route.ts)), helpers en [lib/mercadolibre.ts](lib/mercadolibre.ts).
 - [x] Schema de base de datos: `dealers`, `equipos`, `ml_conexiones` ([supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql)), con RLS para que cada dealer solo vea lo suyo.
 - [x] Carga de fotos + extracción de specs con IA — [app/dashboard/nuevo](app/dashboard/nuevo/page.tsx) sube a Supabase Storage (bucket `equipos`, [supabase/migrations/002_storage.sql](supabase/migrations/002_storage.sql)) y llama a [app/api/equipos/analizar](app/api/equipos/analizar/route.ts), que usa Claude (`claude-opus-5`, [lib/anthropic.ts](lib/anthropic.ts)) para sacar marca/modelo/año/horas y crea el registro en `equipos`. El dashboard ya lee equipos reales de Supabase ([lib/use-equipos.ts](lib/use-equipos.ts)) — se quitó `lib/mock-data.ts`.
-- [ ] Búsqueda de comparables reales en Mercado Libre y cálculo del rango de precio (siguiente paso).
-- [ ] Generación del anuncio (título/descripción) y publicación vía `POST /items` de ML.
+- [x] Búsqueda de comparables reales en Mercado Libre y cálculo del rango de precio — [lib/pricing.ts](lib/pricing.ts). **Hallazgo importante:** ML ahora exige un access_token de usuario real (no anónimo, no de app vía `client_credentials`) incluso para buscar. [lib/ml-token.ts](lib/ml-token.ts) obtiene/refresca el token del dealer conectado; si el dealer no ha conectado ML, el equipo se queda en `borrador` sin tronar.
+- [x] Generación del anuncio y publicación vía `POST /items` de ML — [app/api/equipos/[id]/generar-anuncio](app/api/equipos/[id]/generar-anuncio/route.ts) y [app/api/equipos/[id]/publicar](app/api/equipos/[id]/publicar/route.ts), botones en las tarjetas del dashboard ([components/equipo-card.tsx](components/equipo-card.tsx)). **Sin probar de punta a punta todavía** — necesita un dealer con ML conectado y crédito de Anthropic; además la creación de items en ML casi siempre requiere iterar una vez que veamos los 400 reales de una categoría específica (atributos obligatorios que no podemos adivinar de antemano).
 - [ ] Salida "copiar/pegar" para Facebook Marketplace (fase 2).
 
 ## Producción
@@ -78,7 +78,7 @@ Desplegado en Vercel: **https://mianca.vercel.app** (proyecto `melenci/mianca`).
 ## Cómo correrlo localmente
 
 1. `npm install`
-2. Crea un proyecto en [Supabase](https://supabase.com), corre el SQL de [supabase/migrations/001_schema.sql](supabase/migrations/001_schema.sql) en el SQL Editor.
+2. Crea un proyecto en [Supabase](https://supabase.com) y corre, en orden, el SQL de `supabase/migrations/`: [001_schema.sql](supabase/migrations/001_schema.sql), [002_storage.sql](supabase/migrations/002_storage.sql), [003_estado_visible.sql](supabase/migrations/003_estado_visible.sql).
 3. Crea una app en [Mercado Libre Developers](https://developers.mercadolibre.com.mx/). **ML exige que el Redirect URI sea `https://`, no acepta `http://localhost`** — usa `https://localhost:3000/api/ml/callback` (o tu dominio real en producción).
 4. Copia `.env.local.example` a `.env.local` y llena las variables reales: URL/anon key/service role key de Supabase (Project Settings → API en el dashboard de Supabase) y el client id/secret de tu app de ML.
 5. Para correr https en local sin depender de mkcert (que pide permisos de administrador), ya hay un certificado autofirmado generado en `certificates/` — corre `npm run dev:https` en vez de `npm run dev`.
