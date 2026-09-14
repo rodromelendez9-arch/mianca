@@ -25,6 +25,7 @@ export interface Equipo {
   fotos: string[];
   precio_sugerido_min: number | null;
   precio_sugerido_max: number | null;
+  precio_justificacion: string | null;
   comparables: ComparableGuardado[];
   titulo_anuncio: string | null;
   descripcion_anuncio: string | null;
