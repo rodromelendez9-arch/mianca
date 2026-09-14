@@ -73,7 +73,9 @@ Construyendo en el orden natural: **auth → carga/valuación con IA → compara
 - [x] Transparencia de la valuación — cada tarjeta puede expandir la lista real de comparables usados (título, precio, link a la publicación de ML) y muestra una justificación en texto del rango (`precio_justificacion`), no solo el número. Avisa cuando la IA no identificó marca/modelo con certeza.
 - [x] Edición manual — marca/modelo/año/horas/nombre se pueden corregir a mano desde la tarjeta (`PATCH /api/equipos/[id]`) cuando la IA no los leyó bien de la foto, y un botón "Recalcular precio" (`POST /api/equipos/[id]/recalcular-precio`) reintenta la búsqueda de comparables con los datos corregidos.
 - [x] Carga por lote — [app/dashboard/nuevo](app/dashboard/nuevo/page.tsx) sube varios equipos en una sesión, cada uno con sus propias fotos, procesados y reportados de forma independiente.
-- [ ] Salida "copiar/pegar" para Facebook Marketplace (fase 2).
+- [x] Salida "copiar/pegar" para Facebook Marketplace — [components/fb-export-panel.tsx](components/fb-export-panel.tsx). FB no tiene API pública para publicar, así que reutiliza el título/descripción ya generados y los da en un bloque de texto con botón de copiar, listo para pegar a mano en el formulario de FB.
+- [x] Métricas de la publicación — [app/api/equipos/[id]/metricas](app/api/equipos/[id]/metricas/route.ts) trae visitas (30 días) y preguntas desde la API de ML para equipos ya publicados. **Sin probar en vivo todavía** — mismo caveat que la publicación: primer intento contra estos endpoints, puede necesitar ajuste una vez que haya una publicación real para probar.
+- [x] Video como evidencia adicional — se puede subir un video opcional por equipo junto con las fotos. Claude no analiza video (la API de mensajes solo toma imágenes) y ML tampoco lo acepta en la publicación, así que se guarda aparte (`video_url`) y se muestra como reproductor embebido en la tarjeta — es material de apoyo para el comprador, no entra en la valuación ni en el anuncio.
 
 ## Producción
 
@@ -82,7 +84,7 @@ Desplegado en Vercel: **https://mianca.vercel.app** (proyecto `melenci/mianca`).
 ## Cómo correrlo localmente
 
 1. `npm install`
-2. Crea un proyecto en [Supabase](https://supabase.com) y corre, en orden, el SQL de `supabase/migrations/`: [001_schema.sql](supabase/migrations/001_schema.sql), [002_storage.sql](supabase/migrations/002_storage.sql), [003_estado_visible.sql](supabase/migrations/003_estado_visible.sql), [004_precio_justificacion.sql](supabase/migrations/004_precio_justificacion.sql).
+2. Crea un proyecto en [Supabase](https://supabase.com) y corre, en orden, todo el SQL de `supabase/migrations/` (001 a 005).
 3. Crea una app en [Mercado Libre Developers](https://developers.mercadolibre.com.mx/) con Authorization Code + PKCE + Refresh Token habilitados.
 4. Copia `.env.local.example` a `.env.local` y llena las variables reales: URL/anon key/service role key de Supabase (Project Settings → API en el dashboard de Supabase) y el client id/secret de tu app de ML.
 5. `npm run dev` y entra a `/registro` para crear tu primer dealer.
